@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Custom Circle Chart</title>
-    <!-- グラフ描画用ライブラリ Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
-    <!-- 画像は個別に指定。* は使えません -->
-    <img src="images/test-image.png" alt="説明">
 </head>
 <body>
 
 <div class="panel">
-    <h3>① デザイン変更</h3>
+    <div class="header-row">
+        <h3>① デザイン変更</h3>
+        <button class="btn btn-theme" id="themeToggle" title="テーマ切り替え">🌙</button>
+    </div>
     <div class="form-group">
         <label for="gridStyle">網目の形状</label>
         <select id="gridStyle">
@@ -39,23 +39,32 @@
 <div class="chart-container">
     <div class="canvas-wrapper">
         <canvas id="customRadarChart"></canvas>
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p>グラフを読み込んでいます...</p>
+        </div>
     </div>
-    <button class="btn btn-save" id="saveBtn">📸 グラフを画像(PNG)として保存</button>
+    <div class="button-row">
+        <button class="btn btn-save" id="saveBtn">📸 画像を保存</button>
+        <button class="btn btn-share" id="shareBtn">🔗 共有</button>
+    </div>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script>
-    // 初期データ（10項目）
+    // 初期データ（10 項目）
     let chartData = [
-        { label: '項目1', value: 80 },
-        { label: '項目2', value: 70 },
-        { label: '項目3', value: 65 },
-        { label: '項目4', value: 85 },
-        { label: '項目5', value: 50 },
-        { label: '項目6', value: 90 },
-        { label: '項目7', value: 75 },
-        { label: '項目8', value: 60 },
-        { label: '項目9', value: 80 },
-        { label: '項目10', value: 70 }
+        { label: '項目 1', value: 80 },
+        { label: '項目 2', value: 70 },
+        { label: '項目 3', value: 65 },
+        { label: '項目 4', value: 85 },
+        { label: '項目 5', value: 50 },
+        { label: '項目 6', value: 90 },
+        { label: '項目 7', value: 75 },
+        { label: '項目 8', value: 60 },
+        { label: '項目 9', value: 80 },
+        { label: '項目 10', value: 70 }
     ];
 
     const colorThemes = {
@@ -68,6 +77,29 @@
     const inputsContainer = document.getElementById('valueInputs');
     const canvas = document.getElementById('customRadarChart');
     const ctx = canvas.getContext('2d');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const themeToggle = document.getElementById('themeToggle');
+    const toast = document.getElementById('toast');
+
+    // テーマ管理
+    let isDarkMode = localStorage.getItem('darkMode') === 'true';
+    
+    function applyTheme() {
+        document.body.classList.toggle('dark-mode', isDarkMode);
+        themeToggle.textContent = isDarkMode ? '☀️' : '🌙';
+        localStorage.setItem('darkMode', isDarkMode);
+        updateChartColors();
+    }
+
+    themeToggle.addEventListener('click', () => {
+        isDarkMode = !isDarkMode;
+        applyTheme();
+    });
+
+    // OS の設定を初回読み込み時に反映
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches && !localStorage.getItem('darkMode')) {
+        isDarkMode = true;
+    }
 
     // グラフの描画
     const myChart = new Chart(ctx, {
@@ -90,7 +122,7 @@
                 legend: { display: false }
             },
             animation: {
-                duration: 150 
+                duration: 150
             },
             scales: {
                 r: {
@@ -115,12 +147,29 @@
                 const ctx = chart.canvas.getContext('2d');
                 ctx.save();
                 ctx.globalCompositeOperation = 'destination-over';
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = isDarkMode ? '#1a1a1a' : '#ffffff';
                 ctx.fillRect(0, 0, chart.width, chart.height);
                 ctx.restore();
             }
         }]
     });
+
+    // ローディング完了
+    setTimeout(() => {
+        loadingOverlay.style.display = 'none';
+    }, 500);
+
+    // テーマ切り替え時にグラフの色を更新
+    function updateChartColors() {
+        const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
+        const angleColor = isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
+        const tickColor = isDarkMode ? '#aaa' : '#666';
+        
+        myChart.options.scales.r.grid.color = gridColor;
+        myChart.options.scales.r.angleLines.color = angleColor;
+        myChart.options.scales.r.ticks.color = tickColor;
+        myChart.update();
+    }
 
     // 入力フォームの画面生成・同期関数
     function renderInputs() {
@@ -141,13 +190,12 @@
             inputsContainer.appendChild(row);
         });
 
-        // datasets[0]に修正完了
         myChart.data.labels = chartData.map(d => d.label);
         myChart.data.datasets[0].data = chartData.map(d => d.value);
         myChart.update();
     }
 
-    // スライダー操作イベント
+    // 入力イベント（event delegation）
     inputsContainer.addEventListener('input', (e) => {
         const index = parseInt(e.target.dataset.index);
         
@@ -159,19 +207,17 @@
             const val = parseInt(e.target.value);
             chartData[index].value = val;
             document.getElementById('val-' + index).textContent = val;
-            
-            // datasets[0]に修正完了
             myChart.data.datasets[0].data[index] = val;
             myChart.update();
         }
     });
 
-    // 削除ボタンの処理
+    // クリックイベント（削除ボタン）
     inputsContainer.addEventListener('click', (e) => {
         if (e.target.classList.contains('btn-delete')) {
             const index = parseInt(e.target.dataset.index);
             if (chartData.length <= 3) {
-                alert("これ以上項目を減らすことはできません（最低3項目必要です）");
+                alert("これ以上項目を減らすことはできません（最低 3 項目必要です）");
                 return;
             }
             chartData.splice(index, 1); 
@@ -179,7 +225,7 @@
         }
     });
 
-    // 新しく項目を追加するボタンの処理
+    // 新しく項目を追加
     document.getElementById('addBtn').addEventListener('click', () => {
         const newNum = chartData.length + 1;
         chartData.push({ label: '項目' + newNum, value: 50 }); 
@@ -195,15 +241,26 @@
     // カラーテーマの切り替え
     document.getElementById('colorTheme').addEventListener('change', (e) => {
         const theme = colorThemes[e.target.value];
-        // datasets[0]に修正完了
         myChart.data.datasets[0].backgroundColor = theme.bg;
         myChart.data.datasets[0].borderColor = theme.line;
         myChart.data.datasets[0].pointBackgroundColor = theme.point;
         myChart.update();
     });
 
-    // 画像保存ボタンの処理
+    // トースト表示
+    function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    // 画像保存
     document.getElementById('saveBtn').addEventListener('click', () => {
+        // ローディング表示を一時的に非表示
+        loadingOverlay.style.display = 'none';
+        
         const imageURI = canvas.toDataURL('image/png');
         const link = document.createElement('a');
         link.download = 'custom-chart.png';
@@ -211,7 +268,41 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        showToast('✅ 画像を保存しました');
     });
 
-    // 初回読み込み時の初期表示
+    // 共有機能
+    document.getElementById('shareBtn').addEventListener('click', async () => {
+        const shareData = {
+            title: 'Custom Circle Chart',
+            text: '『ソウルズ・レムナント』の生活スキルを視覚化するカスタム円グラフツール',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+                showToast('🔗 共有しました');
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    showToast('⚠️ 共有に失敗しました');
+                }
+            }
+        } else {
+            // 非対応ブラウザ：URL をクリップボードにコピー
+            try {
+                await navigator.clipboard.writeText(window.location.href);
+                showToast('🔗 URL をコピーしました（共有メニューから貼り付け可能）');
+            } catch (err) {
+                showToast('⚠️ コピーに失敗しました');
+            }
+        }
+    });
+
+    // 初回読み込み
+    applyTheme();
     renderInputs();
+</script>
+</body>
+</html>
