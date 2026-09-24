@@ -30,6 +30,10 @@
             <option value="orange">オレンジ</option>
         </select>
     </div>
+        <div class="form-group">
+        <label for="colorTheme">タイトル</label>
+        <input type="text" id="chartTitle" value="" />
+    </div>
 
     <h3>② 項目の編集・数値入力</h3>
     <div id="valueInputs"></div>
@@ -94,6 +98,7 @@
         const shareBtn = document.getElementById('shareBtn');
         const gridStyleSelect = document.getElementById('gridStyle');
         const colorThemeSelect = document.getElementById('colorTheme');
+        const chartTitleInputText = document.getElementById('chartTitle');
 
         // テーマ管理
         let isDarkMode = localStorage.getItem('darkMode') === 'true';
@@ -133,7 +138,16 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false }
+                    legend: { display: false },
+                        title: {
+                            display: true,
+                            text: '',
+                            position: 'top',
+                            font: {
+                                size: 20,
+                                weight: 'bold'
+                            }
+                        }
                 },
                 animation: {
                     duration: 150
@@ -249,6 +263,15 @@
         // 網目デザインの切り替え
         gridStyleSelect.addEventListener('change', function(e) {
             myChart.options.scales.r.grid.circular = (e.target.value === 'circle');
+            myChart.update();
+        });
+
+        // タイトルの入力
+        chartTitleInputText.addEventListener('input', function(e) {
+            if (e.isComposing) {
+                return;
+            }
+            myChart.options.plugins.title.text = chartTitleInputText.value;
             myChart.update();
         });
 
